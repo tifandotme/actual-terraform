@@ -72,7 +72,7 @@ resource "google_cloud_run_v2_service" "actual_server" {
   depends_on = [google_project_service.run]
 
   template {
-    # execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
+    execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
     containers {
       image = "actualbudget/actual-server:latest-alpine"
       ports {
