@@ -12,38 +12,12 @@ terraform {
   }
 }
 
-# CI Service Account for GitHub Actions
-resource "google_service_account" "ci_sa" {
-  account_id   = "actual-ci-sa"
-  display_name = "Actual CI Service Account"
-}
-
-resource "google_project_iam_member" "ci_sa_secret_manager" {
-  project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.ci_sa.email}"
-}
-
-resource "google_project_iam_member" "ci_sa_cloud_run" {
-  project = var.project_id
-  role    = "roles/run.admin"
-  member  = "serviceAccount:${google_service_account.ci_sa.email}"
-}
-
-resource "google_service_account_iam_member" "ci_sa_act_as_actual_sa" {
-  service_account_id = google_service_account.actual_sa.name
-  role               = "roles/iam.serviceAccountUser"
-  member             = "serviceAccount:${google_service_account.ci_sa.email}"
-}
-
-resource "google_service_account_key" "ci_sa_key" {
-  service_account_id = google_service_account.ci_sa.name
-}
-
 provider "google" {
   project = var.project_id
   region  = var.region
 }
+
+# APIs
 
 resource "google_project_service" "run" {
   service            = "run.googleapis.com"
@@ -60,6 +34,9 @@ resource "google_project_service" "secretmanager" {
   disable_on_destroy = true
 }
 
+
+# BUCKET
+
 resource "google_storage_bucket" "actual_bucket" {
   name          = "actual-bucket-new"
   location      = var.region
@@ -74,13 +51,28 @@ resource "google_storage_bucket" "actual_bucket" {
   }
 }
 
+# SERVICE ACCOUNT
+
+resource "google_service_account" "actual_sa" {
+  account_id   = "actual-server-sa"
+  display_name = "Actual Server Service Account"
+}
+
+resource "google_project_iam_member" "actual_sa_storage" {
+  project = var.project_id
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${google_service_account.actual_sa.email}"
+}
+
+# CLOUD RUN
+
 resource "google_cloud_run_v2_service" "actual_server" {
   name       = "actual-server"
   location   = var.region
   depends_on = [google_project_service.run]
 
   template {
-    execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
+    # execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
     containers {
       image = "actualbudget/actual-server:latest-alpine"
       ports {
@@ -129,10 +121,15 @@ resource "google_cloud_run_v2_service" "actual_server" {
   }
 }
 
-resource "google_service_account" "actual_sa" {
-  account_id   = "actual-server-sa"
-  display_name = "Actual Server Service Account"
+resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
+  project  = google_cloud_run_v2_service.actual_server.project
+  location = google_cloud_run_v2_service.actual_server.location
+  name     = google_cloud_run_v2_service.actual_server.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }
+
+# DOMAIN MAPPING
 
 resource "google_cloud_run_domain_mapping" "actual_domain" {
   location = var.region
@@ -147,16 +144,31 @@ resource "google_cloud_run_domain_mapping" "actual_domain" {
   }
 }
 
-resource "google_project_iam_member" "actual_sa_storage" {
-  project = var.project_id
-  role    = "roles/storage.objectAdmin"
-  member  = "serviceAccount:${google_service_account.actual_sa.email}"
+# CI SERVICE ACCOUNT
+resource "google_service_account" "ci_sa" {
+  account_id   = "actual-ci-sa"
+  display_name = "Actual CI Service Account"
 }
 
-resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
-  project  = var.project_id
-  location = var.region
-  name     = google_cloud_run_v2_service.actual_server.name
-  role     = "roles/run.invoker"
-  member   = "allUsers"
+resource "google_project_iam_member" "ci_sa_secret_manager" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.ci_sa.email}"
+}
+
+resource "google_project_iam_member" "ci_sa_cloud_run" {
+  project = var.project_id
+  role    = "roles/run.admin"
+  member  = "serviceAccount:${google_service_account.ci_sa.email}"
+}
+
+resource "google_service_account_iam_member" "ci_sa_act_as_actual_sa" {
+  service_account_id = google_service_account.actual_sa.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.ci_sa.email}"
+}
+
+resource "google_service_account_key" "ci_sa_key" {
+  service_account_id = google_service_account.ci_sa.name
+  public_key_type    = "TYPE_X509_PEM_FILE"
 }
