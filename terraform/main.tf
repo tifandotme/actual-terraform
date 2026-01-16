@@ -13,7 +13,7 @@ terraform {
 }
 
 provider "google" {
-  project = var.project_id
+  project = terraform-states-484014
   region  = var.region
 }
 

@@ -4,12 +4,6 @@ _.file = ".env"
 [tools]
 terraform = "latest"
 
-[tasks.encrypt]
-run = "dotenvx encrypt -k GCP_SA_KEY"
-
-[tasks.decrypt]
-run = "dotenvx decrypt"
-
 [tasks.set-project]
 description = "Set gcloud project to ensure correct context"
 run = """
@@ -24,10 +18,6 @@ terraform fmt
 terraform validate
 """
 
-[tasks."terraform:clean"]
-description = "Clean Terraform init artifacts"
-run = "rm -rf terraform/.terraform terraform/.terraform.lock.hcl"
-
 [tasks.migrate-data]
 description = "Migrate data from backup to new bucket"
 run = "gsutil cp -r ./backup/* gs://actual-bucket-new/"
@@ -40,7 +30,3 @@ run = "gsutil cp -r gs://actual-bucket-new/* ./backup/"
 description = "Read logs from the Actual server service"
 depends = ["set-project"]
 run = "gcloud run services logs read actual-server --region $TF_VAR_region --project $TF_VAR_project_id"
-
-[tasks.service-url]
-description = "Get the service URL from Terraform output"
-run = "terraform output -raw service_url"
