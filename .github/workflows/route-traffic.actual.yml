@@ -1,0 +1,30 @@
+name: Route Traffic to Latest
+
+on:
+  workflow_dispatch:
+
+jobs:
+  route-traffic:
+    runs-on: ubuntu-slim
+
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - run: curl -sfS https://dotenvx.sh/install.sh | sh
+
+      - run: |
+          dotenvx get --format eval -f terraform/.env | sed 's/^export //' | sed 's/"//g' | grep -v GCP_SA_KEY >> $GITHUB_ENV
+          dotenvx get GCP_SA_KEY -f terraform/.env > service_account.json
+        env:
+          DOTENV_PRIVATE_KEY: ${{ secrets.DOTENV_PRIVATE_KEY }}
+
+      - id: sa-key
+        run: echo "json=$(cat service_account.json)" >> $GITHUB_OUTPUT
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          credentials_json: ${{ steps.sa-key.outputs.json }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - run: gcloud run services update-traffic actual-server --to-latest --region ${{ env.TF_VAR_region }}

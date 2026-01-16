@@ -1,0 +1,46 @@
+[env]
+_.file = ".env"
+
+[tools]
+terraform = "latest"
+
+[tasks.encrypt]
+run = "dotenvx encrypt -k GCP_SA_KEY"
+
+[tasks.decrypt]
+run = "dotenvx decrypt"
+
+[tasks.set-project]
+description = "Set gcloud project to ensure correct context"
+run = """
+gcloud config set project $TF_VAR_project_id
+gcloud auth application-default set-quota-project $TF_VAR_project_id
+"""
+
+[tasks."check"]
+description = "Run terraform fmt and validate"
+run = """
+terraform fmt
+terraform validate
+"""
+
+[tasks."terraform:clean"]
+description = "Clean Terraform init artifacts"
+run = "rm -rf terraform/.terraform terraform/.terraform.lock.hcl"
+
+[tasks.migrate-data]
+description = "Migrate data from backup to new bucket"
+run = "gsutil cp -r ./backup/* gs://actual-bucket-new/"
+
+[tasks.backup-data]
+description = "Backup data from old bucket locally"
+run = "gsutil cp -r gs://actual-bucket-new/* ./backup/"
+
+[tasks.logs]
+description = "Read logs from the Actual server service"
+depends = ["set-project"]
+run = "gcloud run services logs read actual-server --region $TF_VAR_region --project $TF_VAR_project_id"
+
+[tasks.service-url]
+description = "Get the service URL from Terraform output"
+run = "terraform output -raw service_url"
