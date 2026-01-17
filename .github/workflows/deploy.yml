@@ -22,5 +22,7 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
 
-      - run: dotenvx get --format eval -f terraform/.env | grep TF_VAR >> $GITHUB_ENV
+      # shell format uses space not newline for some reason
+      - run: dotenvx get --format shell -f terraform/.env | grep TF_VAR | sed 's/ /\n/g' >> $GITHUB_ENV
+
       - run: gcloud run deploy actual-server --image actualbudget/actual-server:latest-alpine --region ${{ env.TF_VAR_region }}
