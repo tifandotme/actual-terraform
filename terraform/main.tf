@@ -19,14 +19,14 @@ provider "google" {
 
 # APIs
 
-resource "google_project_service" "run" {
-  service            = "run.googleapis.com"
-  disable_on_destroy = true
-}
-
 resource "google_project_service" "storage" {
   service            = "storage.googleapis.com"
   disable_on_destroy = false
+}
+
+resource "google_project_service" "run" {
+  service            = "run.googleapis.com"
+  disable_on_destroy = true
 }
 
 resource "google_project_service" "secretmanager" {
@@ -34,14 +34,12 @@ resource "google_project_service" "secretmanager" {
   disable_on_destroy = true
 }
 
-
 # BUCKET
 
 resource "google_storage_bucket" "actual_bucket" {
   name          = "actual-bucket-new"
   location      = var.region
   storage_class = "STANDARD"
-  depends_on    = [google_project_service.storage]
 
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
@@ -49,6 +47,8 @@ resource "google_storage_bucket" "actual_bucket" {
   soft_delete_policy {
     retention_duration_seconds = 604800 # 7 days
   }
+
+  depends_on = [google_project_service.storage]
 }
 
 # SERVICE ACCOUNT
@@ -147,7 +147,7 @@ resource "google_cloud_run_domain_mapping" "actual_domain" {
 # CI SERVICE ACCOUNT
 resource "google_service_account" "ci_sa" {
   account_id   = "actual-ci-sa"
-  display_name = "Actual CI Service Account"
+  display_name = "CI Service Account"
 }
 
 resource "google_project_iam_member" "ci_sa_secret_manager" {
