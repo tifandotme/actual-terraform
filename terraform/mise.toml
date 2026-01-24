@@ -4,9 +4,9 @@ _.file = ".env"
 [tools]
 terraform = "latest"
 
-[tasks."check"]
-description = "Run terraform fmt and validate"
+[tasks.set-project]
+description = "Set gcloud project to ensure correct context"
 run = """
-terraform fmt
-terraform validate
+gcloud config set project $TF_VAR_project_id
+gcloud auth application-default set-quota-project $TF_VAR_project_id
 """
