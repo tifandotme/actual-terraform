@@ -1,9 +1,22 @@
 #!/bin/bash
+# Cron on macOS often runs with HOME unset; without this, cd to ~/backups fails silently.
+set -eo pipefail
 
-cd "$HOME"/backups || exit
+export HOME="${HOME:-/Users/$(id -un)}"
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-echo "$(date): Starting backup" >>actual-backup.log
+# Personal GCP identity for this bucket only (does not change global gcloud default).
+export CLOUDSDK_CORE_ACCOUNT="ifan.anvity@gmail.com"
 
-/opt/homebrew/bin/gsutil cp -r gs://actual-bucket-new/* ./actual-backup-latest/ 2>>actual-backup.log
+BACKUP_ROOT="${HOME}/backups"
+LOG="${BACKUP_ROOT}/actual-backup.log"
+DEST="${BACKUP_ROOT}/actual-backup-latest"
 
-echo "$(date): Backup completed" >>actual-backup.log
+mkdir -p "$DEST"
+cd "$BACKUP_ROOT"
+
+{
+  echo "$(date): Starting backup"
+  /opt/homebrew/bin/gsutil -m cp -r "gs://actual-bucket-new/*" "${DEST}/"
+  echo "$(date): Backup completed"
+} >>"$LOG" 2>&1
